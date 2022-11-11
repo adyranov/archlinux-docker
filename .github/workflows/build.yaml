@@ -7,20 +7,17 @@ on:
   workflow_dispatch:
     inputs:
       publish-image:
-        type: choice
         description: Publish a docker image
         required: true
-        options:
-          - YES
-          - NO
-        default: YES
+        default: false
+        type: boolean
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
   cancel-in-progress: true
 env:
   PLATFORMS: linux/arm64,linux/amd64
-  PUBLISH_IMAGE: ${{ (github.event_name == 'push' && github.ref_name == 'main') || github.event.inputs.publish-image == 'YES' }}
+  PUBLISH_IMAGE: ${{ (github.event_name == 'push' && github.ref_name == 'main') || github.event.inputs.publish-image == 'true' }}
 jobs:
   build:
     runs-on: ubuntu-22.04
@@ -36,6 +33,11 @@ jobs:
         with:
           install: true
           platforms: ${{ env.PLATFORMS }}
+      - name: Login to DockerHub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v2
         with:
@@ -48,15 +50,16 @@ jobs:
         with:
           images: |
             ghcr.io/${{ github.repository }}
+            docker.io/${{ github.repository_owner }}/archlinux
           tags: |
             type=schedule,prefix=base-,pattern={{date 'YYYYMMDD'}}
             type=raw,value=base,enable={{is_default_branch}}
             type=raw,value=latest,enable={{is_default_branch}}
-      - name: Push Base Image
+      - name: Build and Push Base Image
         uses: docker/build-push-action@v3
         with:
           context: .
-          push: true
+          push: ${{ env.PUBLISH_IMAGE }}
           platforms: ${{ env.PLATFORMS }}
           target: base
           tags: ${{ steps.metadata-base.outputs.tags }}
@@ -68,14 +71,15 @@ jobs:
         with:
           images: |
             ghcr.io/${{ github.repository }}
+            docker.io/${{ github.repository_owner }}/archlinux
           tags: |
             type=schedule,prefix=base-devel-,pattern={{date 'YYYYMMDD'}}
             type=raw,value=base-devel,enable={{is_default_branch}}
-      - name: Push Base Devel Image
+      - name: Build and Push Base Devel Image
         uses: docker/build-push-action@v3
         with:
           context: .
-          push: true
+          push: ${{ env.PUBLISH_IMAGE }}
           platforms: ${{ env.PLATFORMS }}
           target: base-devel
           tags: ${{ steps.metadata-base-devel.outputs.tags }}
