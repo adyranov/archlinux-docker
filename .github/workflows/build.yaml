@@ -43,7 +43,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ github.token }}
       - name: Generate Base Image Metadata
         id: metadata-base
         uses: docker/metadata-action@v4
@@ -65,23 +65,3 @@ jobs:
           tags: ${{ steps.metadata-base.outputs.tags }}
           labels: ${{ steps.metadata-base.outputs.labels }}
           builder: ${{ steps.metadata-base.outputs.name }}
-      - name: Generate Base Devel Image Metadata
-        id: metadata-base-devel
-        uses: docker/metadata-action@v4
-        with:
-          images: |
-            ghcr.io/${{ github.repository }}
-            docker.io/${{ github.repository_owner }}/archlinux
-          tags: |
-            type=schedule,prefix=base-devel-,pattern={{date 'YYYYMMDD'}}
-            type=raw,value=base-devel,enable={{is_default_branch}}
-      - name: Build and Push Base Devel Image
-        uses: docker/build-push-action@v3
-        with:
-          context: .
-          push: ${{ env.PUBLISH_IMAGE }}
-          platforms: ${{ env.PLATFORMS }}
-          target: base-devel
-          tags: ${{ steps.metadata-base-devel.outputs.tags }}
-          labels: ${{ steps.metadata-base-devel.outputs.labels }}
-          builder: ${{ steps.metadata-base-devel.outputs.name }}
