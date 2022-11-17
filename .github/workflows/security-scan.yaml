@@ -15,6 +15,9 @@ jobs:
     steps:
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@0.8.0
+        env:
+          TRIVY_USERNAME: ${{ github.repository_owner }}
+          TRIVY_PASSWORD: ${{ github.token }}
         with:
           image-ref: ghcr.io/${{ github.repository }}:latest
           ignore-unfixed: true
