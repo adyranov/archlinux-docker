@@ -57,7 +57,7 @@ RUN haveged -w 1024 && \
     pacman-key --populate
 
 RUN echo "en_US.UTF-8 UTF-8" > /etc/locale.gen && \
-	echo "LANG=en_US.UTF-8" > /etc/locale.conf && \
+    echo "LANG=en_US.UTF-8" > /etc/locale.conf && \
     locale-gen
 
 RUN pacman -Qeq |  grep -q ^ && pacman -D --asdeps $(pacman -Qeq) || echo "nothing to set as dependency"
