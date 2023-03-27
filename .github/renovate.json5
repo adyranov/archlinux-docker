@@ -1,29 +1,33 @@
 {
   $schema: "https://docs.renovatebot.com/renovate-schema.json",
-  extends: ["config:base", ":automergeDigest", ":automergeMinor", "helpers:pinGitHubActionDigests"],
+  extends: [
+    "config:base",
+    ":automergeDigest",
+    ":automergeMinor",
+    ":enablePreCommit",
+    ":rebaseStalePrs",
+    ":semanticCommits",
+    ":semanticCommitScope(deps)",
+    "helpers:pinGitHubActionDigests",
+    "group:allNonMajor",
+  ],
   labels: ["dependencies"],
   stabilityDays: 3,
+  dependencyDashboardAutoclose: true,
   packageRules: [
     {
-      matchUpdateTypes: ["patch"],
-      semanticCommitType: "fix",
-      automergeType: "branch",
-      ignoreTests: true,
-      automerge: true,
-    },
-    {
-      matchUpdateTypes: ["minor"],
-      semanticCommitType: "feat",
-    },
-    {
+      description: "Require dashboard approval for major updates",
       matchUpdateTypes: ["major"],
-      semanticCommitType: "feat!",
+      dependencyDashboardApproval: true,
     },
     {
+      description: "Auto merge GitHub Actions weekly",
       matchManagers: ["github-actions"],
       automerge: true,
       automergeType: "branch",
       ignoreTests: true,
+      extends: ["schedule:weekly"],
+      groupName: "github-actions",
     },
   ],
 }
