@@ -1,5 +1,5 @@
-# syntax=docker/dockerfile:1.4
-FROM alpine:3.17 AS builder
+# syntax=docker/dockerfile:1.7
+FROM alpine:3.19 AS builder
 
 RUN apk add arch-install-scripts haveged curl pacman-makepkg zstd
 
@@ -25,6 +25,7 @@ RUN [[ "$(uname -m)" == "x86_64" ]] || exit 0 && \
     echo 'Server = https://geo.mirror.pkgbuild.com/$repo/os/$arch' > /etc/pacman.d/mirrorlist
 
 RUN haveged -w 1024 && \
+    rm -rf /etc/pacman.d/gnupg && mkdir -p /etc/pacman.d/gnupg && echo "allow-weak-key-signatures" >> /etc/pacman.d/gnupg/gpg.conf && \
     pacman-key --init && \
     pacman-key --populate
 
@@ -53,6 +54,7 @@ COPY --from=builder /buildroot/ /
 SHELL ["/bin/bash", "-c"]
 
 RUN haveged -w 1024 && \
+    rm -rf /etc/pacman.d/gnupg && mkdir -p /etc/pacman.d/gnupg && echo "allow-weak-key-signatures" >> /etc/pacman.d/gnupg/gpg.conf && \
     pacman-key --init && \
     pacman-key --populate
 

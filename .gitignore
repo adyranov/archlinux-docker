@@ -1,0 +1,32 @@
+### Intellij ###
+.idea/
+*.iml
+*.iws
+*.ipr
+*.ids
+*.orig
+/classes/
+/out/
+
+### VisualStudioCode ###
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/*.code-snippets
+.history
+
+### Windows ###
+Thumbs.db
+[Dd]esktop.ini
+*.lnk
+
+### macOS ###
+.DS_Store
+._*
+.Spotlight-V100
+.Trashes
+
+### Local Env ###
+.envrc
