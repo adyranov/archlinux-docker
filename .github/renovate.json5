@@ -40,8 +40,9 @@
     },
     {
       description: "Limit Alpine image version",
-      matchPackageNames: ["docker.io/library/alpine"],
-      allowedVersions: "<3.20",
+      matchFileNames: ["Dockerfile"],
+      matchDepNames: ["alpine"],
+      allowedVersions: "<=3.19",
     },
   ],
 }
