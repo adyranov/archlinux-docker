@@ -38,5 +38,10 @@
       extends: ["schedule:weekly"],
       groupName: "pre-commit",
     },
+    {
+      description: "Limit Alpine image version",
+      matchPackageNames: ["docker.io/library/alpine"],
+      allowedVersions: "<3.20",
+    },
   ],
 }
