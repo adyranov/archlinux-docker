@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.11
+# syntax=docker/dockerfile:1.12
 FROM alpine:3.19 AS builder
 
 RUN apk add arch-install-scripts haveged curl pacman-makepkg zstd
