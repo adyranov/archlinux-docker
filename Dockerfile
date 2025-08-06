@@ -10,8 +10,7 @@ SHELL ["/bin/bash", "-c"]
 COPY rootfs /
 
 RUN mkdir -p /etc/pacman.d && \
-    mkdir -p /usr/share/pacman/keyrings && \
-    cat /etc/pacman-conf.d-noextract.conf >> /etc/pacman.conf
+    mkdir -p /usr/share/pacman/keyrings
 
 RUN [[ "$(uname -m)" == "aarch64" ]] || exit 0 && \
     curl -L https://github.com/archlinuxarm/archlinuxarm-keyring/archive/refs/heads/master.zip | unzip -d /tmp/archlinuxarm-keyring - && \
@@ -44,7 +43,7 @@ RUN [[ "$(uname -m)" == "x86_64" ]] || exit 0 && \
 RUN rm /buildroot/dev/null && \
     rm /buildroot/var/lib/pacman/sync/*
 
-RUN cat /etc/pacman-conf.d-noextract.conf >> /buildroot/etc/pacman.conf && \
+RUN cp /etc/pacman.conf /buildroot/etc/pacman.conf && \
     cp /etc/pacman.d/mirrorlist /buildroot/etc/pacman.d/mirrorlist
 
 FROM scratch as configurer
