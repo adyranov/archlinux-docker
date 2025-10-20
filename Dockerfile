@@ -1,7 +1,12 @@
 # syntax=docker/dockerfile:1.19
+ARG CACHE_BUST=1
 FROM alpine:3.19 AS builder
+ARG CACHE_BUST
 
-RUN apk add arch-install-scripts haveged curl pacman-makepkg zstd
+RUN --mount=type=cache,id=apk-cache,target=/var/cache/apk \
+    set -eu; \
+    : "${CACHE_BUST}"; \
+    apk add arch-install-scripts haveged curl pacman-makepkg zstd
 
 WORKDIR /buildroot
 
@@ -28,17 +33,18 @@ RUN haveged -w 1024 && \
     pacman-key --init && \
     pacman-key --populate
 
-RUN mkdir -m 0755 -p /buildroot/var/{cache/pacman/pkg,lib/pacman,log} /buildroot/{dev,run,etc} && \
+RUN --mount=type=cache,id=pacman-pkg,target=/var/cache/pacman/pkg,sharing=locked \
+    mkdir -m 0755 -p /buildroot/var/{cache/pacman/pkg,lib/pacman,log} /buildroot/{dev,run,etc} && \
     mkdir -m 1777 -p /buildroot/tmp && \
     mkdir -m 0555 -p /buildroot/{sys,proc} && \
     mknod /buildroot/dev/null c 1 3 && \
-    pacman -r /buildroot -Sy --noconfirm base haveged
+    pacman -r /buildroot --cachedir /var/cache/pacman/pkg --cachedir /buildroot/var/cache/pacman/pkg -Sy --noconfirm base haveged
 
 RUN [[ "$(uname -m)" == "aarch64" ]] || exit 0 && \
-    pacman -r /buildroot -Sy --noconfirm archlinuxarm-keyring
+    pacman -r /buildroot --cachedir /var/cache/pacman/pkg --cachedir /buildroot/var/cache/pacman/pkg -Sy --noconfirm archlinuxarm-keyring
 
 RUN [[ "$(uname -m)" == "x86_64" ]] || exit 0 && \
-    pacman -r /buildroot -Sy --noconfirm archlinux-keyring
+    pacman -r /buildroot --cachedir /var/cache/pacman/pkg --cachedir /buildroot/var/cache/pacman/pkg -Sy --noconfirm archlinux-keyring
 
 RUN rm /buildroot/dev/null && \
     rm /buildroot/var/lib/pacman/sync/*
@@ -46,7 +52,7 @@ RUN rm /buildroot/dev/null && \
 RUN cp /etc/pacman.conf /buildroot/etc/pacman.conf && \
     cp /etc/pacman.d/mirrorlist /buildroot/etc/pacman.d/mirrorlist
 
-FROM scratch as configurer
+FROM scratch AS configurer
 
 COPY --from=builder /buildroot/ /
 
@@ -57,9 +63,7 @@ RUN haveged -w 1024 && \
     pacman-key --init && \
     pacman-key --populate
 
-RUN echo "en_US.UTF-8 UTF-8" > /etc/locale.gen && \
-    echo "LANG=en_US.UTF-8" > /etc/locale.conf && \
-    locale-gen
+RUN locale-gen
 
 RUN pacman -Qeq |  grep -q ^ && pacman -D --asdeps $(pacman -Qeq) || echo "nothing to set as dependency"
 
@@ -71,8 +75,8 @@ RUN rm -rf etc/pacman.d/gnupg/{openpgp-revocs.d/,private-keys-v1.d/,pubring.gpg~
 
 RUN rm -f /var/cache/pacman/pkg/* /var/lib/pacman/sync/* /var/log/pacman.log
 
-FROM scratch as base
+FROM scratch
 
 COPY --from=configurer / /
 
-CMD /bin/bash
+CMD ["/bin/bash"]
