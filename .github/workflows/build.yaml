@@ -77,3 +77,5 @@ jobs:
           builder: ${{ steps.buildx.outputs.name }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          build-args: |
+            CACHE_BUST=${{ github.run_id }}-${{ github.run_attempt }}
