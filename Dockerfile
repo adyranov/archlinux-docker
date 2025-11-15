@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.19
+# syntax=docker/dockerfile:1.20
 ARG CACHE_BUST=1
 FROM alpine:3.19 AS builder
 ARG CACHE_BUST
