@@ -30,7 +30,7 @@ repos:
       - id: yamlfmt
         types: [yaml]
   - repo: https://github.com/adrienverge/yamllint
-    rev: v1.37.1
+    rev: v1.38.0
     hooks:
       - id: yamllint
   - repo: https://github.com/pappasam/toml-sort
@@ -65,7 +65,7 @@ repos:
     hooks:
       - id: gitleaks
   - repo: https://github.com/Lucas-C/pre-commit-hooks
-    rev: v1.5.5
+    rev: v1.5.6
     hooks:
       - id: remove-crlf
       - id: remove-tabs
