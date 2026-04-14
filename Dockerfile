@@ -55,6 +55,7 @@ RUN cp /etc/pacman.conf /buildroot/etc/pacman.conf && \
 FROM scratch AS configurer
 
 COPY --from=builder /buildroot/ /
+COPY rootfs /
 
 SHELL ["/bin/bash", "-c"]
 
