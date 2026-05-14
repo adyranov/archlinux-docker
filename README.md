@@ -31,19 +31,19 @@ docker pull docker.io/adyranov/archlinux:latest
 Use the helper script (multi‑arch by default):
 
 ```bash
-./scripts/build-containers.sh
+./scripts/build-container.sh
 ```
 
 Examples
 
 ```bash
 # Single arch (amd64)
-PLATFORMS=linux/amd64 ./scripts/build-containers.sh
+./scripts/build-container.sh --platform linux/amd64
 
 # Custom tag + cache bust
-IMAGE_NAME=ghcr.io/adyranov/archlinux-docker:latest \
-CACHE_BUST_ARG=$(date +%s) \
-./scripts/build-containers.sh
+./scripts/build-container.sh \
+  --tag ghcr.io/adyranov/archlinux-docker:latest \
+  --cache-bust $(date +%s)
 ```
 
 ## Run

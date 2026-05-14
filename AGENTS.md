@@ -9,20 +9,22 @@
 
 - `Dockerfile` — multi-stage build (`alpine` builder → `scratch` configurer → final `scratch` export).
 - `rootfs/etc/` — static files copied into the image (e.g., `pacman.conf`, `locale.conf`, `locale.gen`). Add configuration here rather than inline echoes.
-- `scripts/build-containers.sh` — multi-architecture local build script.
+- `scripts/build-container.sh` — primary test tool for agents and multi-architecture local build script.
 - `.github/workflows/build.yaml` — GitHub Actions workflow for building and publishing.
 
 ## Build & Test
 
-```bash
-# Default multi-arch build
-./scripts/build-containers.sh
+- **Disk Space**: `CheckSpace` must be disabled in `rootfs/etc/pacman.conf` to prevent `pacman` from failing due to incorrect disk space reporting in some Docker/emulation environments.
 
-# Single arch
-PLATFORMS=linux/amd64 ./scripts/build-containers.sh
+```bash
+# Default build (linux/amd64)
+./scripts/build-container.sh
+
+# Target specific architecture
+./scripts/build-container.sh --platform linux/arm64
 
 # Custom tag & cache bust
-IMAGE_NAME=ghcr.io/adyranov/archlinux-docker:latest CACHE_BUST=$(date +%s) ./scripts/build-containers.sh
+./scripts/build-container.sh --tag ghcr.io/adyranov/archlinux-docker:latest --cache-bust $(date +%s)
 ```
 
 ## Coding Style
