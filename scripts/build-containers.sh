@@ -29,8 +29,17 @@ CMD=(docker buildx build)
 CMD+=("--platform" "${PLATFORMS}")
 CMD+=("--tag" "${IMAGE_NAME}")
 CMD+=("--file" "${REPO_ROOT}/Dockerfile")
-CMD+=("--load")
 CMD+=("--build-arg" "CACHE_BUST=${CACHE_BUST}")
+
+# --load only works for single-platform builds; use OCI tarball for multi-platform
+if [[ "${PLATFORMS}" == *","* ]]; then
+  output_tar="${REPO_ROOT}/archlinux.tar"
+  CMD+=("--output" "type=oci,dest=${output_tar}")
+  echo "Multi-platform build: output will be saved to ${output_tar}"
+else
+  CMD+=("--load")
+fi
+
 CMD+=("${REPO_ROOT}")
 
 echo "Running: ${CMD[*]}"

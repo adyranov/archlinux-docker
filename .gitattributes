@@ -1,5 +1,19 @@
-* text=auto eol=lf
+# Auto detect text files and perform LF normalization
+* text=auto
 
-*.{cmd,[cC][mM][dD]}  text eol=crlf
-*.{bat,[bB][aA][tT]}  text eol=crlf
-*.{ps1,[pP][sS]1}     text eol=crlf
+# Shell scripts
+*.sh text eol=lf linguist-language=Shell
+
+# Docker
+Dockerfile linguist-language=Dockerfile linguist-detectable=true
+
+# Markdown
+*.md text eol=lf linguist-documentation=true
+
+# Config files
+*.yaml text eol=lf
+*.yml text eol=lf
+*.json text eol=lf
+*.json5 text eol=lf
+*.conf text eol=lf
+*.toml text eol=lf

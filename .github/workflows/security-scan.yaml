@@ -19,11 +19,14 @@ jobs:
         with:
           image-ref: ghcr.io/${{ github.repository }}:latest
           ignore-unfixed: true
-          vuln-type: os
+          vuln-type: os,library
+          scanners: vuln,secret,misconfig
           severity: CRITICAL,HIGH
           format: sarif
           output: trivy-results.sarif
+          exit-code: 1
       - name: Upload Trivy scan results to GitHub Security tab
+        if: always()
         uses: github/codeql-action/upload-sarif@68bde559dea0fdcac2102bfdf6230c5f70eb485e # v4
         with:
           sarif_file: trivy-results.sarif
