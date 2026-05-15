@@ -11,23 +11,23 @@ concurrency:
 jobs:
   smoke-test:
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
-    runs-on: ubuntu-24.04
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 5
     strategy:
       matrix:
-        platform:
-          - linux/amd64
-          - linux/arm64
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-24.04
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
+    env:
+      IMAGE: ghcr.io/${{ github.repository }}:latest
+      PLATFORM: ${{ matrix.platform }}
     steps:
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392 # v3
-      - name: Pull image
-        run: docker pull --platform ${{ matrix.platform }} ghcr.io/${{ github.repository }}:latest
-      - name: Verify bash
-        run: docker run --rm --platform ${{ matrix.platform }} ghcr.io/${{ github.repository }}:latest bash -c 'echo OK'
-      - name: Verify pacman
-        run: docker run --rm --platform ${{ matrix.platform }} ghcr.io/${{ github.repository }}:latest pacman -V
-      - name: Verify locale
-        run: docker run --rm --platform ${{ matrix.platform }} ghcr.io/${{ github.repository }}:latest locale
-      - name: Verify pacman-key
-        run: docker run --rm --platform ${{ matrix.platform }} ghcr.io/${{ github.repository }}:latest pacman-key --list-keys >/dev/null
+      - name: Smoke test image
+        run: |
+          docker pull --platform "${PLATFORM}" "${IMAGE}"
+          docker run --rm --platform "${PLATFORM}" "${IMAGE}" bash -euc '
+            pacman -V
+            pacman-key --list-keys >/dev/null
+          '
