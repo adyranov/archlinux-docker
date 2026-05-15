@@ -50,15 +50,5 @@
       ],
       groupName: 'pre-commit',
     },
-    {
-      description: 'Limit Alpine image version',
-      matchFileNames: [
-        'Dockerfile',
-      ],
-      matchDepNames: [
-        'alpine',
-      ],
-      allowedVersions: '<=3.19',
-    },
   ],
 }

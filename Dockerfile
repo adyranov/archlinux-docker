@@ -1,82 +1,120 @@
 # syntax=docker/dockerfile:1.24.0
 ARG CACHE_BUST=1
-FROM alpine:3.19@sha256:6baf43584bcb78f2e5847d1de515f23499913ac9f12bdf834811a3145eb11ca1 AS builder
+
+FROM --platform=$BUILDPLATFORM alpine:3.23@sha256:5b10f432ef3da1b8d4c7eb6c487f2f5a8f096bc91145e68878dd4a5019afde11 AS bootstrap
 ARG CACHE_BUST
+ARG TARGETARCH
 
 RUN --mount=type=cache,id=apk-cache,target=/var/cache/apk \
     set -eu; \
     : "${CACHE_BUST}"; \
-    apk add arch-install-scripts curl pacman-makepkg zstd
-
-WORKDIR /buildroot
+    apk add bash curl pacman zstd
 
 SHELL ["/bin/bash", "-c"]
 
 COPY rootfs /
 
 RUN <<EOF
-  set -euo pipefail
-  mkdir -p /etc/pacman.d /usr/share/pacman/keyrings
-  arch="$(uname -m)"
-  if [ "${arch}" = "aarch64" ]; then
-    curl -fsSL https://github.com/archlinuxarm/archlinuxarm-keyring/archive/refs/heads/master.zip \
-      | unzip -d /tmp/archlinuxarm-keyring -
-    mv /tmp/archlinuxarm-keyring/*/archlinuxarm* /usr/share/pacman/keyrings/
-    echo 'Server = http://mirror.archlinuxarm.org/$arch/$repo' > /etc/pacman.d/mirrorlist
-  elif [ "${arch}" = "x86_64" ]; then
-    mkdir /tmp/archlinux-keyring
+set -euo pipefail
+
+buildroot=/buildroot
+gpg_dir=/etc/pacman.d/gnupg
+mirrorlist=/etc/pacman.d/mirrorlist
+pacman_cache=/var/cache/pacman/pkg
+keyrings=/usr/share/pacman/keyrings
+target_arch="${TARGETARCH:-$(uname -m)}"
+
+install -d /etc/pacman.d "${keyrings}"
+
+case "${target_arch}" in
+  arm64|aarch64)
+    pacman_arch=aarch64
+    keyring_package=archlinuxarm-keyring
+
+    install -d /tmp/archlinuxarm-keyring
+    curl -fsSL https://github.com/archlinuxarm/archlinuxarm-keyring/archive/refs/heads/master.tar.gz \
+      | tar -C /tmp/archlinuxarm-keyring --strip-components=1 -xz
+    mv /tmp/archlinuxarm-keyring/archlinuxarm* "${keyrings}/"
+    printf '%s\n' \
+      'SigLevel = Required DatabaseNever' \
+      'Server = http://mirror.archlinuxarm.org/$arch/$repo' \
+      > "${mirrorlist}"
+    ;;
+  amd64|x86_64)
+    pacman_arch=x86_64
+    keyring_package=archlinux-keyring
+
+    install -d /tmp/archlinux-keyring
     curl -fsSL https://archlinux.org/packages/core/any/archlinux-keyring/download \
-      | unzstd | tar -C /tmp/archlinux-keyring -xv
-    mv /tmp/archlinux-keyring/usr/share/pacman/keyrings/* /usr/share/pacman/keyrings/
-    echo 'Server = https://geo.mirror.pkgbuild.com/$repo/os/$arch' > /etc/pacman.d/mirrorlist
-  fi
-  rm -rf /etc/pacman.d/gnupg && mkdir -p /etc/pacman.d/gnupg
-  echo "allow-weak-key-signatures" >> /etc/pacman.d/gnupg/gpg.conf
-  pacman-key --init
-  pacman-key --populate
+      | unzstd | tar -C /tmp/archlinux-keyring -x
+    mv /tmp/archlinux-keyring/usr/share/pacman/keyrings/* "${keyrings}/"
+    printf '%s\n' 'Server = https://geo.mirror.pkgbuild.com/$repo/os/$arch' > "${mirrorlist}"
+    ;;
+  *)
+    echo "unsupported architecture: ${target_arch}" >&2
+    exit 1
+    ;;
+esac
+
+install -d -m 0700 "${gpg_dir}"
+pacman-key --init
+pacman-key --populate
+
+mkdir -m 0755 -p \
+  "${pacman_cache}" \
+  "${buildroot}"/var/{cache/pacman/pkg,lib/pacman,log} \
+  "${buildroot}"/{dev,run,etc}
+mkdir -m 1777 -p "${buildroot}/tmp"
+mkdir -m 0555 -p "${buildroot}/sys" "${buildroot}/proc"
+mknod "${buildroot}/dev/null" c 1 3
+
+pacman \
+  --config /etc/pacman.conf \
+  --arch "${pacman_arch}" \
+  -r "${buildroot}" \
+  --gpgdir "${gpg_dir}" \
+  --disable-sandbox \
+  --cachedir "${pacman_cache}" \
+  --cachedir "${buildroot}/var/cache/pacman/pkg" \
+  -Sy --needed --noconfirm base "${keyring_package}"
+
+rm -f "${buildroot}/dev/null" "${buildroot}/var/lib/pacman/sync/"*
+cp /etc/pacman.conf "${buildroot}/etc/pacman.conf"
+cp "${mirrorlist}" "${buildroot}/etc/pacman.d/mirrorlist"
 EOF
 
-RUN --mount=type=cache,id=pacman-pkg,target=/var/cache/pacman/pkg,sharing=locked <<EOF
-  set -euo pipefail
-  mkdir -m 0755 -p /buildroot/var/{cache/pacman/pkg,lib/pacman,log} /buildroot/{dev,run,etc}
-  mkdir -m 1777 -p /buildroot/tmp
-  mkdir -m 0555 -p /buildroot/{sys,proc}
-  mknod /buildroot/dev/null c 1 3
-  pacman -r /buildroot --cachedir /var/cache/pacman/pkg --cachedir /buildroot/var/cache/pacman/pkg \
-    -Sy --noconfirm base
-  arch="$(uname -m)"
-  if [ "${arch}" = "aarch64" ]; then
-    pacman -r /buildroot --cachedir /var/cache/pacman/pkg --cachedir /buildroot/var/cache/pacman/pkg \
-      -Sy --noconfirm archlinuxarm-keyring
-  elif [ "${arch}" = "x86_64" ]; then
-    pacman -r /buildroot --cachedir /var/cache/pacman/pkg --cachedir /buildroot/var/cache/pacman/pkg \
-      -Sy --noconfirm archlinux-keyring
-  fi
-  rm /buildroot/dev/null
-  rm /buildroot/var/lib/pacman/sync/*
-  cp /etc/pacman.conf /buildroot/etc/pacman.conf
-  cp /etc/pacman.d/mirrorlist /buildroot/etc/pacman.d/mirrorlist
-EOF
+FROM scratch AS configure
 
-FROM scratch AS configurer
-
-COPY --from=builder /buildroot/ /
+COPY --from=bootstrap /buildroot/ /
 COPY rootfs /
 
 SHELL ["/bin/bash", "-c"]
 
 RUN <<EOF
-  set -euo pipefail
-  rm -rf /etc/pacman.d/gnupg && mkdir -p /etc/pacman.d/gnupg
-  echo "allow-weak-key-signatures" >> /etc/pacman.d/gnupg/gpg.conf
-  pacman-key --init
-  pacman-key --populate
-  locale-gen
-  pacman -Qeq | grep -q ^ && pacman -D --asdeps $(pacman -Qeq) || echo "nothing to set as dependency"
-  pacman -Sy --asexplicit --needed --noconfirm base pacman
-  pacman -Qtdq | grep -v base && pacman -Rsunc --noconfirm $(pacman -Qtdq | grep -v base) systemd || echo "nothing to remove"
-  rm -rf etc/pacman.d/gnupg/{openpgp-revocs.d/,private-keys-v1.d/,pubring.gpg~,gnupg.S.}*
-  rm -f /var/cache/pacman/pkg/* /var/lib/pacman/sync/* /var/log/pacman.log
+set -euo pipefail
+
+install -d -m 0700 /etc/pacman.d/gnupg
+pacman-key --init
+pacman-key --populate
+
+locale-gen
+
+mapfile -t explicit_packages < <(pacman -Qeq)
+if ((${#explicit_packages[@]})); then
+  pacman -D --asdeps "${explicit_packages[@]}"
+fi
+
+mapfile -t keyring_packages < <(pacman -Qq | grep -E '^(archlinux|archlinuxarm)-keyring$' || true)
+pacman --disable-sandbox -Sy --asexplicit --needed --noconfirm \
+  base pacman "${keyring_packages[@]}"
+
+mapfile -t removable_packages < <(pacman -Qtdq | grep -Ev '^(base|pacman|archlinux-keyring|archlinuxarm-keyring)$' || true)
+if ((${#removable_packages[@]})); then
+  pacman -Rns --noconfirm "${removable_packages[@]}"
+fi
+
+rm -rf /etc/pacman.d/gnupg/{openpgp-revocs.d,private-keys-v1.d,pubring.gpg~,S.gpg-agent}*
+rm -f /var/cache/pacman/pkg/* /var/lib/pacman/sync/* /var/log/pacman.log
 EOF
 
 FROM scratch
@@ -87,6 +125,6 @@ LABEL org.opencontainers.image.title="Arch Linux" \
       org.opencontainers.image.source="https://github.com/adyranov/archlinux-docker" \
       org.opencontainers.image.licenses="MIT"
 
-COPY --from=configurer / /
+COPY --from=configure / /
 
 CMD ["/bin/bash"]
