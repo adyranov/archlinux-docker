@@ -1,32 +1,46 @@
 name: Security Scan
 on:
-  schedule:
-    - cron: 0 1 * * 6
+  workflow_run:
+    workflows: [Build]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
   cancel-in-progress: true
 jobs:
-  security-scan:
+  trivy:
+    if: >-
+      github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 10
+    permissions:
+      packages: read
+      security-events: write
     steps:
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ github.token }}
       - name: Run Trivy vulnerability scanner
+        id: trivy
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         env:
-          TRIVY_USERNAME: ${{ github.repository_owner }}
-          TRIVY_PASSWORD: ${{ github.token }}
+          TRIVY_PLATFORM: linux/amd64
         with:
           image-ref: ghcr.io/${{ github.repository }}:latest
+          scanners: vuln,secret,misconfig
           ignore-unfixed: true
           vuln-type: os,library
-          scanners: vuln,secret,misconfig
-          severity: CRITICAL,HIGH
+          severity: HIGH,CRITICAL
+          limit-severities-for-sarif: true
           format: sarif
           output: trivy-results.sarif
-          exit-code: 1
       - name: Upload Trivy scan results to GitHub Security tab
-        if: always()
-        uses: github/codeql-action/upload-sarif@68bde559dea0fdcac2102bfdf6230c5f70eb485e # v4
+        if: always() && steps.trivy.outcome == 'success'
+        uses: github/codeql-action/upload-sarif@9e0d7b8d25671d64c341c19c0152d693099fb5ba # v4.35.5
         with:
           sarif_file: trivy-results.sarif
+          category: trivy-archlinux

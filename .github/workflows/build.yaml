@@ -1,12 +1,27 @@
 name: Build
 on:
   push:
+    branches:
+      - main
+    paths:
+      - .dockerignore
+      - Dockerfile
+      - rootfs/**
+      - .github/workflows/build.yaml
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .dockerignore
+      - Dockerfile
+      - rootfs/**
+      - .github/workflows/build.yaml
   schedule:
-    - cron: 0 23 * * 5
+    - cron: 0 23 * * 6
   workflow_dispatch:
     inputs:
-      publish-image:
-        description: Publish a docker image
+      publish:
+        description: Publish docker images
         required: true
         default: false
         type: boolean
@@ -22,7 +37,7 @@ jobs:
     uses: docker/github-builder/.github/workflows/build.yml@c2782c55efa56a01b9c30021db8f5ec3993228a3 # v1.8.0
     with:
       output: image
-      push: ${{ (github.event_name == 'push' && github.ref_name == 'main') || github.event.inputs.publish-image == 'true' }}
+      push: ${{ (github.event_name == 'push' && github.ref_name == 'main') || github.event_name == 'schedule' || inputs.publish == true }}
       context: .
       file: Dockerfile
       platforms: linux/arm64,linux/amd64

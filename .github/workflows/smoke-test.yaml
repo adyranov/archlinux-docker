@@ -13,6 +13,8 @@ jobs:
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 5
+    permissions:
+      packages: read
     strategy:
       matrix:
         include:
@@ -24,6 +26,12 @@ jobs:
       IMAGE: ghcr.io/${{ github.repository }}:latest
       PLATFORM: ${{ matrix.platform }}
     steps:
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ github.token }}
       - name: Smoke test image
         run: |
           docker pull --platform "${PLATFORM}" "${IMAGE}"
