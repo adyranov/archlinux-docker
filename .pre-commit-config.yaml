@@ -71,11 +71,11 @@ repos:
       - id: forbid-crlf
       - id: forbid-tabs
   - repo: https://github.com/editorconfig-checker/editorconfig-checker
-    rev: v3.11.1
+    rev: v3.11.2
     hooks:
       - id: editorconfig-checker
   - repo: https://github.com/renovatebot/pre-commit-hooks
-    rev: 44.37.1
+    rev: 44.48.3
     hooks:
       - id: renovate-config-validator
 default_language_version:
